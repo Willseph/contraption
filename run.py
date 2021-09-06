@@ -5,6 +5,7 @@ import ds18b20
 import json
 import os
 from outlet import Outlet
+import sys
 
 
 CONFIG = ".env"
@@ -28,13 +29,13 @@ def updateStatusFile (enabled):
 	status = { "on": (not not enabled) }
 	statusText = json.dumps (status)
 	print ("Updating status information to file: %s" % statusText)
-	overwriteFile (STATUS_FILE, statusText)
+	overwriteFile (os.path.join (getScriptDir (), STATUS_FILE), statusText)
 
 
 def getTempSettings ():
 	"""Reads the current settings json file"""
 	try:
-		with open(SETTINGS_FILE) as f:
+		with open (os.path.join (getScriptDir (), SETTINGS_FILE)) as f:
 			return json.load(f)
 	except:
 		pass
@@ -46,9 +47,16 @@ def CtoF (celsius):
 	return (celsius * 9.0/5.0) + 32
 
 
+def getScriptDir ():
+	"""Returns the directory in which this script resides."""
+	return os.path.dirname (os.path.realpath (sys.argv[0]))
+
+
 def main ():
 	print ("Retrieving config info...")
-	config = dotenv_values (CONFIG)
+	configPath = os.path.join (getScriptDir (), CONFIG)
+	print ("Config path: %s" % (configPath))
+	config = dotenv_values (configPath)
 	if not config:
 		print ("Could not load config file.")
 		return
@@ -97,9 +105,11 @@ def main ():
 
 	if fahrenheit >= max:
 		print ("Temperature is greater than max setting (%s°F)" % (str (max)))
+		print ("Disabling outlet...")
 		outlet.disable ()
 	elif fahrenheit < min:
 		print ("Temperature is less than min setting (%s°F)" % (str (min)))
+		print ("Enabling outlet...")
 		outlet.enable ()
 	else:
 		print ("Temperature in range, not changing heater setting.")
