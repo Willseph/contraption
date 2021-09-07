@@ -2,3 +2,4 @@ __pycache__
 *.pyc
 .env
 status.json
+settings.json
