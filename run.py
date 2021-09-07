@@ -8,10 +8,16 @@ from outlet import Outlet
 import sys
 
 
+## CONSTS
+
+DEFAULT_PULSE_LENGTH = 150
 CONFIG = ".env"
 SETTINGS_FILE = "settings.json"
 STATUS_FILE = "status.json"
 
+##
+
+## HELPER METHODS
 
 def overwriteFile (path, content):
 	"""Writes the content to the path specified, overwriting anything if it exists"""
@@ -32,14 +38,16 @@ def updateStatusFile (enabled):
 	overwriteFile (os.path.join (getScriptDir (), STATUS_FILE), statusText)
 
 
-def getTempSettings ():
-	"""Reads the current settings json file"""
+def loadJsonFromFile (path):
+	"""Reads the file at the provided path and returns the JSON-parsed dictionary.
+	Returns None if exception occurs."""
+	result = None
 	try:
-		with open (os.path.join (getScriptDir (), SETTINGS_FILE)) as f:
-			return json.load(f)
+		with open (path, "r") as f:
+			result = json.load (f)
 	except:
 		pass
-	return None
+	return result
 
 
 def CtoF (celsius):
@@ -52,15 +60,129 @@ def getScriptDir ():
 	return os.path.dirname (os.path.realpath (sys.argv[0]))
 
 
-def main ():
-	print ("Retrieving config info...")
+def verifyProperty (dict, key):
+	if not dict:
+		print ("No dict provided when checking for key \"%s\"." % (key))
+		fatalError ()
+	if not key in dict:
+		print ("Missing \"%s\" property in dict." % (key))
+		fatalError ()
+
+##
+
+## PRIMARY METHODS
+
+def fatalError (code = 1):
+	"""Ends the program in an erroneous state with the provided error code."""
+	print ("Fatal error.")
+	sys.exit (code)
+
+
+def getConfig ():
+	"""Returns the current environment config."""
 	configPath = os.path.join (getScriptDir (), CONFIG)
 	print ("Config path: %s" % (configPath))
+
 	config = dotenv_values (configPath)
 	if not config:
 		print ("Could not load config file.")
+		fatalError ()
+
+	# Required properties
+	verifyProperty (config, "CODE_ON")
+	verifyProperty (config, "CODE_OFF")
+
+	print ("Config: %s" % (json.dumps (config)))
+	return config
+
+
+def getSettings ():
+	"""Returns the current user settings."""
+	path = os.path.join (getScriptDir (), SETTINGS_FILE)
+	settings = loadJsonFromFile (path)
+	if not settings:
+		print ("Could not load settings file.")
+		fatalError ()
+
+	# Required properties
+	verifyProperty (settings, "min")
+	verifyProperty (settings, "max")
+
+	min = float (settings["min"])
+	max = float (settings["max"])
+
+	if min <= 0 or max <= 0:
+		print ("Min and max values must be greater than zero.")
+		fatalError ()
+	if min >= max:
+		print ("Max must be grater than min.")
+		fatalError ()
+
+	print ("Settings: %s" % (json.dumps (settings)))
+	return settings
+
+
+def toggleOutletByTemperature (outlet, currentF, minF, maxF):
+	"""Enables or disables the outlet based on the current temperature and the range provided."""
+	if not outlet:
+		print ("Outlet manager not provided.")
+		fatalError ()
+	if currentF >= maxF:
+		print ("Temperature is greater than max setting (%s°F)" % (str (maxF)))
+		print ("Disabling outlet...")
+		outlet.disable ()
+		updateStatusFile (False)
+	elif currentF < minF:
+		print ("Temperature is less than min setting (%s°F)" % (str (minF)))
+		print ("Enabling outlet...")
+		outlet.enable ()
+		updateStatusFile (True)
+	else:
+		print ("Temperature in range, not changing heater setting.")
+
+##
+
+## MAIN
+
+def main ():
+	# Config
+	print ("Retrieving config info...")
+	config = getConfig ()
+	pulseLength = DEFAULT_PULSE_LENGTH
+	if "PULSE" in config:
+		pulseLength = int (config["PULSE"])
+	if pulseLength <= 0:
+		pulseLength = DEFAULT_PULSE_LENGTH
+
+	# Settings
+	print ("Getting settings from file...")
+	settings = getSettings ()
+
+	active = "active" in settings and settings["active"] is True
+	forced = "forced" in settings and settings["forced"] is True
+	min = float (settings["min"])
+	max = float (settings["max"])
+
+	if not active:
+		print ("Active setting is not enabled, so cancelling.")
+		return
+	else:
+		print ("Active setting is enabled.")
+
+	# 433 MHz outlet
+	outlet = Outlet (config["CODE_ON"], config["CODE_OFF"], pulseLength)
+	if not outlet:
+		print ("Error setting up 433 MHz outlet.")
 		return
 
+	# Forced setting
+	if forced:
+		print ("Forced setting is enabled, enabling outlet.")
+		outlet.enable ()
+		updateStatusFile (True)
+		return
+
+	# Sensor temp
 	print ("Reading temperature from sensor...")
 	currentTemp = int (ds18b20.readTemperature ())
 	if not currentTemp or currentTemp <= 0:
@@ -71,49 +193,10 @@ def main ():
 	fahrenheit = CtoF (celsius)
 	print ("Current temperature: %s°C / %s°F" % (str (celsius), str (fahrenheit)))
 
-	print ("Getting settings from file...")
-	settings = getTempSettings ()
-	if not settings:
-		print ("Could not load settings from file.")
-		return
+	# Send signals
+	toggleOutletByTemperature (outlet, fahrenheit, min, max)
 
-	if not "max" in settings:
-		print ("Settings file missing maximum temp property.")
-		return
-	if not "min" in settings:
-		print ("Settings file missing minimum temp property.")
-		return
-
-	max = int(settings["max"])
-	min = int(settings["min"])
-	print ("Settings: %s" % (json.dumps (settings)))
-
-	if not "CODE_ON" in config:
-		print ("Missing CODE_ON property in configuration file.")
-		return
-	if not "CODE_OFF" in config:
-		print ("Missing CODE_OFF property in configuration file.")
-		return
-	if not "PULSE" in config:
-		print ("Missing PULSE property in configuration file.")
-		return
-
-	outlet = Outlet (config["CODE_ON"], config["CODE_OFF"], config["PULSE"])
-	if not outlet:
-		print ("Error setting up 433 MHz outlet.")
-		return
-
-	if fahrenheit >= max:
-		print ("Temperature is greater than max setting (%s°F)" % (str (max)))
-		print ("Disabling outlet...")
-		outlet.disable ()
-	elif fahrenheit < min:
-		print ("Temperature is less than min setting (%s°F)" % (str (min)))
-		print ("Enabling outlet...")
-		outlet.enable ()
-	else:
-		print ("Temperature in range, not changing heater setting.")
-
+##
 
 if __name__ == "__main__":
 	main ()
