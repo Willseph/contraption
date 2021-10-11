@@ -1,9 +1,95 @@
 #!/usr/bin/python3
 
-from flask import Flask
+from flask import Flask, Response, request
+import json
+import os
+from tinydb import TinyDB
+
+
+
+### CONSTS
+
+SETTINGS_FILE = os.path.join ("..", "settings.json")
+STATUS_FILE = os.path.join ("..", "status.json")
+MIN_DIFF = 0.5
 
 app = Flask(__name__)
 
-@app.route("/")
-def hello_world():
-    return "<p>Hello, World!</p>"
+
+
+### HELPERS
+
+def dbSettings ():
+	return TinyDB (SETTINGS_FILE)
+
+def ensureTempGap (settings):
+	if "min" in settings and "max" in settings:
+		if settings["max"] < settings["min"]+MIN_DIFF:
+			raise ValueError ("Insufficient gap between minimum and maximum temperatures.")
+
+def jsonResponse (response, status=200):
+	response["success"] = True
+	return Response (json.dumps (response), status=status, mimetype="application/json")
+
+def jsonError (message, code=None, status=400):
+	response = {"error": str (message), "success": False}
+	if code:
+		response["code"] = code
+	return Response (json.dumps (response), status=status, mimetype="application/json")
+
+def defaultSettings ():
+	return { "active":False, "forced":False, "min":68, "max":72 }
+
+def getSettingsOrDefault ():
+	settings = defaultSettings ()
+	try:
+		settings = dbSettings ().all ()[0]
+	except:
+		pass
+	return settings
+
+def overwriteSettings (newSettings):
+	settings = getSettingsOrDefault ()
+	for k, v in newSettings.items ():
+		if k in settings:
+			settings[k] = v
+	ensureTempGap (settings)
+	db = dbSettings ()
+	db.truncate ()
+	db.insert (settings)
+
+
+
+### ROUTES
+
+# GET /v1/settings
+@app.route ("/v1/settings", methods = ["GET"])
+def api_settings_get ():
+	try:
+		settings = getSettingsOrDefault ()
+		return jsonResponse ({"settings":settings})
+	except Exception as ex:
+		return jsonError (ex, status=500)
+
+
+# POST/PUT /v1/settings
+@app.route ("/v1/settings", methods = ["POST", "PUT"])
+def api_settings_update ():
+	try:
+		body = request.json
+		if not body:
+			return jsonError ("No settings body provided in request.")
+		overwriteSettings (body)
+		return api_settings_get ()
+	except Exception as ex:
+		return jsonError (ex, status=500)
+
+
+### INDEX
+
+@app.route ("/")
+def index ():
+	html = "Hello World!"
+	resp = Response (html)
+	resp.headers ["Content-type"] = "text/html"
+	return resp
