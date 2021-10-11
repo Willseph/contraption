@@ -1,0 +1,26 @@
+body {
+	overflow: hidden;
+}
+
+#main {
+	width: 100vw;
+	height: 100vh;
+	position: absolute;
+	z-index: 3;
+	top:0;
+	left:0;
+	right:0;
+	bottom:0;
+}
+
+header {
+	height: 5vh;
+	width: 100vw;
+	color: white;
+	text-align: left;
+	margin-left: 1.5vh;
+	line-height: 5vh;
+	vertical-align: middle;
+	font-weight: 100;
+	font-size: 4vh;
+}
