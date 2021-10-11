@@ -662,7 +662,7 @@ function generateBlobColor (val, colored) {
 	if (colored) {
 		return `hsl(${val}, 100%, 60%)`
 	}
-	return `hsl(${val}, 0%, ${-val/2.0 + 30}%)`
+	return `hsl(${val}, 0%, ${(val / 8.0) + 12}%)`
 }
 
 function map(n, start1, end1, start2, end2) {
