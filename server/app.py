@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-from flask import Flask, Response, request
+from flask import Flask, Response, request, render_template
 import json
 import os
 from tinydb import TinyDB
@@ -22,6 +22,9 @@ app = Flask(__name__)
 def dbSettings ():
 	return TinyDB (SETTINGS_FILE)
 
+def dbStatus ():
+	return TinyDB (STATUS_FILE)
+
 def ensureTempGap (settings):
 	if "min" in settings and "max" in settings:
 		if settings["max"] < settings["min"]+MIN_DIFF:
@@ -40,6 +43,9 @@ def jsonError (message, code=None, status=400):
 def defaultSettings ():
 	return { "active":False, "forced":False, "min":68, "max":72 }
 
+def defaultStatus ():
+	return { "heating":False, "temp":0 }
+
 def getSettingsOrDefault ():
 	settings = defaultSettings ()
 	try:
@@ -47,6 +53,14 @@ def getSettingsOrDefault ():
 	except:
 		pass
 	return settings
+
+def getStatusOrDefault ():
+	status = defaultStatus ()
+	try:
+		status = dbStatus ().all ()[0]
+	except:
+		pass
+	return status
 
 def overwriteSettings (newSettings):
 	settings = getSettingsOrDefault ()
@@ -85,11 +99,22 @@ def api_settings_update ():
 		return jsonError (ex, status=500)
 
 
+# GET /v1/status
+@app.route ("/v1/status", methods = ["GET"])
+def api_status_get ():
+	try:
+		status = getStatusOrDefault ()
+		return jsonResponse ({"status":status})
+	except Exception as ex:
+		return jsonError (ex, status=500)
+
+
+
 ### INDEX
 
 @app.route ("/")
 def index ():
-	html = "Hello World!"
-	resp = Response (html)
-	resp.headers ["Content-type"] = "text/html"
-	return resp
+	return render_template ("index.html")
+
+if __name__ == "__main__":
+	app.run ()
