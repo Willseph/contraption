@@ -188,10 +188,12 @@ def checkSettingsAndToggleAppropriately ():
 		toggleOutlet (True)
 		return
 
+	# If there was an issue getting the current temperature, exit now.
 	if not currentTemp or currentTemp <= 0:
 		print ("Could not read current temperature, check DS18B20 sensor connected to BCM pin 4.")
 		fatalError ()
 
+	# Convert temperature to Fahrenheit
 	celsius = currentTemp / 1000.0
 	fahrenheit = CtoF (celsius)
 	print ("Current temperature: %s°C / %s°F" % (str (celsius), str (fahrenheit)))
