@@ -6,6 +6,7 @@ import json
 import os
 from outlet import Outlet
 import sys
+from tinydb import TinyDB
 
 
 ## CONSTS
@@ -19,32 +20,37 @@ STATUS_FILE = "status.json"
 
 ## HELPER METHODS
 
-def overwriteFile (path, content):
-	"""Writes the content to the path specified, overwriting anything if it exists"""
-	if not path:
-		print ("Missing path value.")
+def dbSettings ():
+	return TinyDB (os.path.join (getScriptDir (), SETTINGS_FILE))
+
+def dbStatus ():
+	return TinyDB (os.path.join (getScriptDir (), STATUS_FILE))
+
+def writeToDB (db, content):
+	"""Writes the content to the TinyDB specified, overwriting anything if it exists"""
+	if not db:
+		print ("Missing DB.")
 	try:
-		with open (path, "w") as f:
-			f.write (content)
+		db.truncate ()
+		db.insert (content)
 	except:
-		print ("Error writing file to: %s" % (path))
+		print ("Error writing info to DB.")
 
 
-def updateStatusFile (enabled):
+def updateStatus (enabled):
 	"""Creates the status json file with the specified status information"""
-	status = { "on": (not not enabled) }
+	status = { "heating": (not not enabled), "temp": currentTemp }
 	statusText = json.dumps (status)
-	print ("Updating status information to file: %s" % statusText)
-	overwriteFile (os.path.join (getScriptDir (), STATUS_FILE), statusText)
+	print ("Updating status information to DB: %s" % statusText)
+	writeToDB (dbStatus (), status)
 
 
-def loadJsonFromFile (path):
+def loadJsonFromDB (db):
 	"""Reads the file at the provided path and returns the JSON-parsed dictionary.
 	Returns None if exception occurs."""
 	result = None
 	try:
-		with open (path, "r") as f:
-			result = json.load (f)
+		result = db.all ()[0]
 	except:
 		pass
 	return result
@@ -74,7 +80,8 @@ def verifyProperty (dict, key):
 
 def fatalError (code = 1):
 	"""Ends the program in an erroneous state with the provided error code."""
-	print ("Fatal error.")
+	print ("Fatal error, disabling outlet.")
+	toggleOutlet (False)
 	sys.exit (code)
 
 
@@ -98,8 +105,7 @@ def getConfig ():
 
 def getSettings ():
 	"""Returns the current user settings."""
-	path = os.path.join (getScriptDir (), SETTINGS_FILE)
-	settings = loadJsonFromFile (path)
+	settings = loadJsonFromDB (dbSettings ())
 	if not settings:
 		print ("Could not load settings file.")
 		fatalError ()
@@ -122,38 +128,34 @@ def getSettings ():
 	return settings
 
 
-def toggleOutletByTemperature (outlet, currentF, minF, maxF):
+def toggleOutletByTemperature (currentF, minF, maxF):
 	"""Enables or disables the outlet based on the current temperature and the range provided."""
 	if not outlet:
 		print ("Outlet manager not provided.")
 		fatalError ()
 	if currentF >= maxF:
 		print ("Temperature is greater than max setting (%s°F)" % (str (maxF)))
-		print ("Disabling outlet...")
-		outlet.disable ()
-		updateStatusFile (False)
+		toggleOutlet (False)
 	elif currentF < minF:
 		print ("Temperature is less than min setting (%s°F)" % (str (minF)))
-		print ("Enabling outlet...")
-		outlet.enable ()
-		updateStatusFile (True)
+		toggleOutlet (True)
 	else:
 		print ("Temperature in range, not changing heater setting.")
 
-##
 
-## MAIN
+def toggleOutlet (enabled):
+	if outlet:
+		if enabled:
+			print ("Enabling outlet...")
+			outlet.enable ()
+			updateStatus (True)
+		else:
+			print ("Disabling outlet...")
+			outlet.disable ()
+			updateStatus (False)
 
-def main ():
-	# Config
-	print ("Retrieving config info...")
-	config = getConfig ()
-	pulseLength = DEFAULT_PULSE_LENGTH
-	if "PULSE" in config:
-		pulseLength = int (config["PULSE"])
-	if pulseLength <= 0:
-		pulseLength = DEFAULT_PULSE_LENGTH
 
+def checkSettingsAndToggleAppropriately ():
 	# Settings
 	print ("Getting settings from file...")
 	settings = getSettings ()
@@ -163,38 +165,71 @@ def main ():
 	min = float (settings["min"])
 	max = float (settings["max"])
 
+	# Sensor temp
+	print ("Reading temperature from sensor...")
+	global currentTemp
+	currentTemp = 0
+	try:
+		currentTemp = int (ds18b20.readTemperature ())
+	except Exception as ex:
+		print ("Error occurred getting temperature: %s" % (ex))
+
+	# Active setting
 	if not active:
 		print ("Active setting is not enabled, so cancelling.")
+		toggleOutlet (False)
 		return
 	else:
 		print ("Active setting is enabled.")
 
-	# 433 MHz outlet
-	outlet = Outlet (config["CODE_ON"], config["CODE_OFF"], pulseLength)
-	if not outlet:
-		print ("Error setting up 433 MHz outlet.")
-		return
-
 	# Forced setting
 	if forced:
-		print ("Forced setting is enabled, enabling outlet.")
-		outlet.enable ()
-		updateStatusFile (True)
+		print ("Forced setting is enabled.")
+		toggleOutlet (True)
 		return
 
-	# Sensor temp
-	print ("Reading temperature from sensor...")
-	currentTemp = int (ds18b20.readTemperature ())
 	if not currentTemp or currentTemp <= 0:
 		print ("Could not read current temperature, check DS18B20 sensor connected to BCM pin 4.")
-		return
+		fatalError ()
 
 	celsius = currentTemp / 1000.0
 	fahrenheit = CtoF (celsius)
 	print ("Current temperature: %s°C / %s°F" % (str (celsius), str (fahrenheit)))
 
 	# Send signals
-	toggleOutletByTemperature (outlet, fahrenheit, min, max)
+	toggleOutletByTemperature (fahrenheit, min, max)
+
+##
+
+## MAIN
+
+config = None
+outlet = None
+currentTemp = 0
+
+def main ():
+	# Config
+	global config
+	print ("Retrieving config info...")
+	config = getConfig ()
+
+	if "PULSE" in config:
+		pulseLength = int (config["PULSE"])
+	if pulseLength <= 0:
+		pulseLength = DEFAULT_PULSE_LENGTH
+
+	# 433 MHz outlet
+	global outlet
+	outlet = Outlet (config["CODE_ON"], config["CODE_OFF"], pulseLength)
+	if not outlet:
+		print ("Error setting up 433 MHz outlet.")
+		return
+
+	try:
+		checkSettingsAndToggleAppropriately ()
+	except Exception as ex:
+		print ("Exception occurred: %s" % (ex))
+		fatalError ()
 
 ##
 
