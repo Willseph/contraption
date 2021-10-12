@@ -10,7 +10,7 @@
 		<title>Contraption</title>
 	</head>
 	<body>
-		<div id="blob">
+		<div id="blob" class="noselect">
 			<svg viewBox="0 0 200 200">
 				<defs>
 					<linearGradient id="gradient" gradientTransform="rotate(90)">
@@ -22,7 +22,7 @@
 			</svg>
 		</div>
 
-		<div id="main">
+		<div id="main" class="noselect">
 			<header>contraption</header>
 			<div id="current-temp">
 				<div id="temp" style="display:none;">
@@ -33,18 +33,20 @@
 			</div>
 			<div id="min-max">
 				<div id="min" class="f-l">
+					<div class="header">minimum</div>
 					<div id="temp-min" class="temp"></div>
 					<div class="inc-dec">
-						<div id="temp-min-dec-btn" class="inc-dec-btn f-l"></div>
-						<div id="temp-min-inc-btn" class="inc-dec-btn f-r"></div>
+						<div id="temp-min-dec-btn" class="inc-dec-btn dec-btn f-l">&ndash;</div>
+						<div id="temp-min-inc-btn" class="inc-dec-btn inc-btn f-r">+</div>
 						<div class="c-b"></div>
 					</div>
 				</div>
 				<div id="max" class="f-r">
+					<div class="header">maximum</div>
 					<div id="temp-max" class="temp"></div>
 					<div class="inc-dec">
-						<div id="temp-max-dec-btn" class="inc-dec-btn f-l"></div>
-						<div id="temp-max-inc-btn" class="inc-dec-btn f-r"></div>
+						<div id="temp-max-dec-btn" class="inc-dec-btn dec-btn f-l">&ndash;</div>
+						<div id="temp-max-inc-btn" class="inc-dec-btn inc-btn f-r">+</div>
 						<div class="c-b"></div>
 					</div>
 				</div>

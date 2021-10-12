@@ -2,15 +2,10 @@ class API {
 	constructor () {
 		let self = this;
 
+		self.updating = false;
 		self._statusIntervalDelay = 1000;
-		self._statusInterval = setInterval (function () {
-			self._pollStatus ()
-		}, self._statusIntervalDelay);
-
 		self._settingsIntervalDelay = 1000;
-		self._settingsInterval = setInterval (function () {
-			self._pollSettings ()
-		}, self._settingsIntervalDelay);
+		self._resetIntervals ();
 
 		self.handlers = {
 			onStatus: function (s) {},
@@ -30,13 +25,43 @@ class API {
 
 	updateSettings (settings, success, error) {
 		let self = this;
+
+		if (self.updating) return;
+		self.updating = true;
+		self._clearIntervals ();
+
 		self._apiPost ("settings", settings, function (r) {
+			self.updating = false;
+			self._resetIntervals ();
 			if (r.success && r.settings) {
 				self._pollStatus ();
 				self.settings = r.settings;
 				if (self.handlers.onSettings) self.handlers.onSettings (r.settings);
 			}
-		}, error);
+		}, function (e) {
+			self.updating = false;
+			self._resetIntervals ();
+			error (e);
+		});
+	}
+
+	_clearIntervals () {
+		let self = this;
+		if (self._statusInterval) clearInterval (self._statusInterval);
+		if (self._settingsInterval) clearInterval (self._settingsInterval);
+	}
+
+	_resetIntervals () {
+		let self = this;
+		self._clearIntervals ();
+
+		self._settingsInterval = setInterval (function () {
+			self._pollSettings ()
+		}, self._settingsIntervalDelay);
+
+		self._statusInterval = setInterval (function () {
+			self._pollStatus ()
+		}, self._statusIntervalDelay);
 	}
 
 	_pollStatus () {
