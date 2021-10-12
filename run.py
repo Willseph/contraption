@@ -129,6 +129,10 @@ def getSettings ():
 	return settings
 
 
+def getCurrentStatus ():
+	return loadJsonFromDB (dbStatus ())
+
+
 def toggleOutletByTemperature (currentF, minF, maxF):
 	"""Enables or disables the outlet based on the current temperature and the range provided."""
 	if not outlet:
@@ -142,6 +146,9 @@ def toggleOutletByTemperature (currentF, minF, maxF):
 		toggleOutlet (True)
 	else:
 		print ("Temperature in range, not changing heater setting.")
+		currentStatus = getCurrentStatus ()
+		if currentStatus and "heating" in currentStatus:
+			updateStatus (currentStatus["heating"])
 
 
 def toggleOutlet (enabled):
