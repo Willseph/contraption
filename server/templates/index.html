@@ -24,10 +24,38 @@
 
 		<div id="main">
 			<header>contraption</header>
+			<div id="current-temp">
+				<div id="temp" style="display:none;">
+					<span id="temp-main" class="primary">0</span><span id="temp-digits" class="secondary">.00</span><span class="primary">°</span>
+				</div>
+				<div id="temp-error" style="display:none;">Error</div>
+				<div class="loading" style="display:none;">...</div>
+			</div>
+			<div id="min-max">
+				<div id="min" class="f-l">
+					<div id="temp-min" class="temp"></div>
+					<div class="inc-dec">
+						<div id="temp-min-dec-btn" class="inc-dec-btn f-l"></div>
+						<div id="temp-min-inc-btn" class="inc-dec-btn f-r"></div>
+						<div class="c-b"></div>
+					</div>
+				</div>
+				<div id="max" class="f-r">
+					<div id="temp-max" class="temp"></div>
+					<div class="inc-dec">
+						<div id="temp-max-dec-btn" class="inc-dec-btn f-l"></div>
+						<div id="temp-max-inc-btn" class="inc-dec-btn f-r"></div>
+						<div class="c-b"></div>
+					</div>
+				</div>
+				<div class="c-b"></div>
+			</div>
 		</div>
 
 		<script src="{{ url_for('static', filename='js/bootstrap.min.js') }}"></script>
 		<script src="{{ url_for('static', filename='js/blob.js') }}"></script>
+		<script src="{{ url_for('static', filename='js/jquery-1.12.4.min.js') }}"></script>
+		<script src="{{ url_for('static', filename='js/api.js') }}"></script>
 		<script src="{{ url_for('static', filename='js/app.js') }}"></script>
 	</body>
 </html>

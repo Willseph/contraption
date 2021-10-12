@@ -3,12 +3,14 @@
 from flask import Flask, Response, request, render_template
 import json
 import os
+import subprocess
 from tinydb import TinyDB
 
 
 
 ### CONSTS
 
+SCRIPT = os.path.join ("..", "run.py")
 SETTINGS_FILE = os.path.join ("..", "settings.json")
 STATUS_FILE = os.path.join ("..", "status.json")
 MIN_DIFF = 0.5
@@ -94,6 +96,7 @@ def api_settings_update ():
 		if not body:
 			return jsonError ("No settings body provided in request.")
 		overwriteSettings (body)
+		subprocess.call (SCRIPT, shell=True)
 		return api_settings_get ()
 	except Exception as ex:
 		return jsonError (ex, status=500)

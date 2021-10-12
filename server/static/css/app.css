@@ -2,6 +2,10 @@ body {
 	overflow: hidden;
 }
 
+.f-l { float: left; }
+.f-r { float: right; }
+.c-b { clear: both; }
+
 #main {
 	width: 100vw;
 	height: 100vh;
@@ -23,4 +27,44 @@ header {
 	vertical-align: middle;
 	font-weight: 100;
 	font-size: 4vh;
+}
+
+#current-temp {
+	height: 60vh;
+	width: 100vw;
+	color: white;
+	text-align: center;
+	line-height: 65vh;
+	vertical-align: middle;
+	font-weight: 300;
+	font-size: 30vh;
+}
+
+#temp {
+	width: 100%;
+	height: 100%;
+}
+
+#temp .primary {
+	font-weight: 300;
+	font-size: 24vh;
+}
+
+#temp .secondary {
+	font-weight: 100;
+	font-size: 7vh;
+}
+
+#min-max {
+	height: 20vh;
+	width: 100vw;
+	color: white;
+	text-align: center;
+	line-height: 20vh;
+	vertical-align: middle;
+}
+
+#min, #max {
+	width: 50%;
+	height: 100%;
 }

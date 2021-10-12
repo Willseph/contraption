@@ -1,5 +1,6 @@
 let BlobSettings = {
 	colored: false,
+	warning: false,
 	enabledBg: "#460f00",
 	disabledBg: "#111113"
 };
