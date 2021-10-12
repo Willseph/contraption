@@ -1,0 +1,12 @@
+[Unit]
+Description=Runs the server for the contraption user interface.
+After=network.target
+
+[Service]
+User=pi
+WorkingDirectory=/var/contraption/server
+ExecStart=flask run --host 0.0.0.0 --port 8080
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

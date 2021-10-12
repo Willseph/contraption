@@ -1,0 +1,11 @@
+[Unit]
+Description=Runs the server for the contraption user interface.
+
+[Service]
+User=pi
+WorkingDirectory=/var/contraption
+ExecStart=/usr/bin/python3 /var/contraption/service.py
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

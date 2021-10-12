@@ -38,7 +38,6 @@ def getConfig ():
 
 	config = dotenv_values (configPath)
 	if not config:
-		print ("Could not load config file.")
 		return None
 
 	# Required properties
