@@ -6,6 +6,7 @@ import json
 import os
 from outlet import Outlet
 import sys
+import time
 from tinydb import TinyDB
 
 
@@ -39,7 +40,7 @@ def writeToDB (db, content):
 
 def updateStatus (enabled):
 	"""Creates the status json file with the specified status information"""
-	status = { "heating": (not not enabled), "temp": currentTemp }
+	status = { "heating": (not not enabled), "temp": currentTemp, "updated": int (time.time ()) }
 	statusText = json.dumps (status)
 	print ("Updating status information to DB: %s" % statusText)
 	writeToDB (dbStatus (), status)
